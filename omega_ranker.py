@@ -1,5 +1,8 @@
 # omega_ranker.py
-"""Omega Ranking Engine — ranking probabilístico 0-100 + tiers."""
+# ============================================================
+# Omega Ranking Engine — ranking probabilístico 0-100 + tiers.
+# v3.2: SL/TP con piso y techo para evitar valores absurdos.
+# ============================================================
 import logging
 import numpy as np
 import pandas as pd
@@ -12,6 +15,7 @@ from config import (
     TP_MULT_BY_TIER, TRAILING_DISTANCE, DEFAULT_TRAILING,
     TRAILING_ACTIVATION_BY_TIER, BE_TRIGGER_BY_TIER,
     LEVERAGE_BY_TIER, COST_TOTAL,
+    SL_MIN_PCT, SL_MAX_PCT, TP_MIN_PCT,
 )
 from omega_regime_detector import OmegaRegimeDetector
 
@@ -47,7 +51,11 @@ class OmegaRanker:
         self.tier_thresholds = TIER_THRESHOLDS
         self.regime_detector = OmegaRegimeDetector()
 
-    def rank(self, signals: List[dict], data_dict: Dict[str, pd.DataFrame]) -> List[OmegaSignal]:
+    # --------------------------------------------------------
+    # RANKING PRINCIPAL
+    # --------------------------------------------------------
+    def rank(self, signals: List[dict],
+             data_dict: Dict[str, pd.DataFrame]) -> List[OmegaSignal]:
         omega_signals: List[OmegaSignal] = []
         for sig in signals:
             if not sig.get('is_valid'):
@@ -65,6 +73,9 @@ class OmegaRanker:
         omega_signals.sort(key=lambda x: -x.omega_score)
         return omega_signals
 
+    # --------------------------------------------------------
+    # CONSTRUCCIÓN DEL OMEGA SIGNAL
+    # --------------------------------------------------------
     def _build_omega(self, sig: dict, df: pd.DataFrame) -> OmegaSignal:
         sym = sig['symbol']
         close = float(df['close'].iloc[-1])
@@ -90,7 +101,6 @@ class OmegaRanker:
 
         hist_wr, hist_pf, hist_dd = self._stats_from_score(consensus)
         hist_wr_score = hist_wr * 100
-
         liquidity_score = 80.0
 
         omega = (
@@ -115,7 +125,10 @@ class OmegaRanker:
             pass
 
         # Ajuste por hora (UTC)
-        hour = df.index[-1].hour
+        try:
+            hour = df.index[-1].hour
+        except Exception:
+            hour = 12
         if hour in [2, 3, 4, 13, 14, 15, 16]:
             omega = min(omega * 1.05, 100)
         elif hour in [8, 9, 20, 21]:
@@ -124,15 +137,20 @@ class OmegaRanker:
         omega = float(np.clip(omega, 0, 100))
         tier = self._classify_tier(omega)
 
+        # ---- SL con piso y techo ----
         atr_mult = ATR_MULT_SL.get(sym, DEFAULT_ATR_MULT_SL)
         sl_distance = atr_mult * atr_pct
+        sl_distance = max(min(sl_distance, SL_MAX_PCT), SL_MIN_PCT)
 
+        # ---- TP con piso mínimo ----
         tp_mult = TP_MULT_BY_TIER.get(tier, 1.0)
-        tp_distance = tp_mult * atr_pct
+        tp_distance = max(tp_mult * atr_pct, TP_MIN_PCT)
 
+        # ---- BE trigger ----
         be_trigger = BE_TRIGGER_BY_TIER.get(tier, 0.5)
         be_trigger_pct = be_trigger * atr_pct
 
+        # ---- Precios ----
         direction = sig['direction']
         if direction == 'LONG':
             sl = close * (1 - sl_distance)
@@ -172,6 +190,9 @@ class OmegaRanker:
             mtf_confirmed=mtf_confirmed,
         )
 
+    # --------------------------------------------------------
+    # HELPERS
+    # --------------------------------------------------------
     def _classify_tier(self, score: float) -> str:
         for tier, thr in self.tier_thresholds.items():
             if score >= thr:
