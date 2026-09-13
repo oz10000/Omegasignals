@@ -11,13 +11,17 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -27,10 +31,15 @@ jobs:
         env:
           TZ: America/Argentina/Buenos_Aires
           ENABLE_LIVE: "False"
+        continue-on-error: false
 
       - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: daps-scan-results
-          path: cache/
+          path: |
+            cache/
+            logs/
           retention-days: 7
+          if-no-files-found: ignore
