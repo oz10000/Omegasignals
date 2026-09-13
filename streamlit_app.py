@@ -1,43 +1,56 @@
 # streamlit_app.py
+# ============================================================
+# D.A.P.S-SIGNALS Ω — Dashboard
+# v3.2: width='stretch' (sin use_container_width deprecado)
+# ============================================================
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-from config import PROJECT_NAME, VERSION, SYMBOLS, ENABLE_LIVE, DEMO_MODE, TZ_ARGENTINA
+from config import (
+    PROJECT_NAME, VERSION, SYMBOLS, ENABLE_LIVE, DEMO_MODE, TZ_ARGENTINA,
+)
 from main import run_scan
-from report_generator import to_dataframe, summary_by_tier, star_trade_report
+from report_generator import to_dataframe, summary_by_tier
 from star_trade_predictor import StarTradePredictor
 from omega_regime_detector import OmegaRegimeDetector
 from data_engine import DataEngine
 
 st.set_page_config(page_title=PROJECT_NAME, page_icon="Ω", layout="wide")
 st.title(f"Ω {PROJECT_NAME} v{VERSION}")
-st.caption(f"Modo: {'🔸 DEMO' if DEMO_MODE else '🔴 LIVE'} · ENABLE_LIVE={ENABLE_LIVE} · TZ Argentina (UTC-3)")
+st.caption(
+    f"Modo: {'🔸 DEMO' if DEMO_MODE else '🔴 LIVE'} · "
+    f"ENABLE_LIVE={ENABLE_LIVE} · TZ Argentina (UTC-3)"
+)
 
-# Sidebar
+# ============================================================
+# SIDEBAR
+# ============================================================
 with st.sidebar:
     st.header("⚙️ Configuración")
     st.caption(f"Activos: {len(SYMBOLS)}")
-    st.caption(f"TF: 5m / 15m / 1h")
+    st.caption("TF: 5m / 15m / 1h")
     st.caption(f"Modo: {'🔸 DEMO' if DEMO_MODE else '🔴 LIVE'}")
     st.caption(f"Ahora: {datetime.now(TZ_ARGENTINA).strftime('%H:%M:%S')} ARG")
 
-    if st.button("🔄 Escanear señales", type="primary", use_container_width=True):
+    if st.button("🔄 Escanear señales", type="primary", width='stretch'):
         st.session_state.scan = True
 
-    if st.button("🌟 Actualizar Star Monitor", use_container_width=True):
+    if st.button("🌟 Actualizar Star Monitor", width='stretch'):
         st.session_state.update_star = True
 
     st.caption(f"Último scan: {st.session_state.get('last_scan', 'Nunca')}")
 
-# Tabs
+# ============================================================
+# TABS
+# ============================================================
 tab_star, tab_regime, tab_scanner, tab_omega = st.tabs([
     "🌟 Star Trade Monitor", "🌊 Ω-Regime", "📡 Scanner", "🏆 Ranking Omega"
 ])
 
-# ------------------------------------------------------------
+# ============================================================
 # TAB 1: STAR TRADE MONITOR
-# ------------------------------------------------------------
+# ============================================================
 with tab_star:
     st.subheader("🌟 Monitor de Trades Estrella — Horario Argentina (UTC-3)")
     st.caption("Ventanas óptimas de operación según backtest 2024-2026")
@@ -55,15 +68,18 @@ with tab_star:
     if pred.is_in_window:
         st.success(f"✅ **VENTANA ACTIVA** — {pred.current_window_label}")
     else:
-        st.info(f"⏳ **Esperando** — Próximo trade estrella en {pred.minutes_until_next} min "
-                f"({pred.next_star_time} ARG)")
+        st.info(
+            f"⏳ **Esperando** — Próximo trade estrella en "
+            f"{pred.minutes_until_next} min ({pred.next_star_time} ARG)"
+        )
 
     st.markdown("---")
     st.markdown("### 📊 Ventanas del día (ARG)")
     for w in predictor.windows:
         st.caption(
             f"{w['label']} · "
-            f"{w['start'][0]:02d}:{w['start'][1]:02d} – {w['end'][0]:02d}:{w['end'][1]:02d} · "
+            f"{w['start'][0]:02d}:{w['start'][1]:02d} – "
+            f"{w['end'][0]:02d}:{w['end'][1]:02d} · "
             f"WR {w['wr']*100:.1f}% · PF {w['pf']} · {w['lev']}x"
         )
 
@@ -73,9 +89,9 @@ with tab_star:
     st.markdown(f"**Leverage recomendado:** {pred.recommended_leverage}x")
     st.markdown(f"**Confianza:** {pred.confidence*100:.1f}%")
 
-# ------------------------------------------------------------
+# ============================================================
 # TAB 2: OMEGA REGIME
-# ------------------------------------------------------------
+# ============================================================
 with tab_regime:
     st.subheader("🌊 Monitor de Régimen Ω")
 
@@ -83,11 +99,13 @@ with tab_regime:
         with st.spinner("Detectando régimen..."):
             de = DataEngine()
             btc = de.fetch_ohlcv('BTC/USDT', '1h', limit=500)
-            if btc is not None:
+            if btc is not None and not btc.empty:
                 detector = OmegaRegimeDetector()
                 report = detector.generate_regime_report({'1h': btc})
                 st.session_state.regime_report = report
                 st.session_state.current_regime = report['current_regime']
+            else:
+                st.error("❌ No se pudo obtener datos de BTC/USDT")
 
     report = st.session_state.get('regime_report')
     if report:
@@ -103,9 +121,9 @@ with tab_regime:
     else:
         st.info("Presioná 'Analizar régimen actual' para ver el estado.")
 
-# ------------------------------------------------------------
+# ============================================================
 # TAB 3: SCANNER
-# ------------------------------------------------------------
+# ============================================================
 with tab_scanner:
     st.subheader("📡 Scanner de activos")
 
@@ -126,11 +144,11 @@ with tab_scanner:
     else:
         st.success(f"✅ {len(signals)} señales encontradas")
         df = to_dataframe(signals)
-        st.dataframe(df, use_container_width=True, height=600)
+        st.dataframe(df, width='stretch', height=600)
 
-# ------------------------------------------------------------
+# ============================================================
 # TAB 4: RANKING OMEGA
-# ------------------------------------------------------------
+# ============================================================
 with tab_omega:
     st.subheader("🏆 Ranking Omega detallado")
 
@@ -139,11 +157,13 @@ with tab_omega:
         st.info("Presioná 'Escanear señales' primero.")
     else:
         st.markdown("### 📊 Resumen por Tier")
-        st.dataframe(summary_by_tier(signals), use_container_width=True)
+        st.dataframe(summary_by_tier(signals), width='stretch')
 
         st.markdown("### 🎯 Top señales")
         for s in signals[:5]:
-            with st.expander(f"{s.symbol} — {s.direction} — Ω Score: {s.omega_score:.2f} [{s.tier}]"):
+            with st.expander(
+                f"{s.symbol} — {s.direction} — Ω Score: {s.omega_score:.2f} [{s.tier}]"
+            ):
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Ω Score", f"{s.omega_score:.2f}")
                 c1.metric("WR estimado", f"{s.estimated_wr*100:.1f}%")
@@ -154,8 +174,14 @@ with tab_omega:
                 c3.metric("Break Even", f"{s.break_even_price}")
                 c3.metric("Trailing", f"{s.trailing_distance*100:.2f}%")
                 c3.metric("Leverage", f"{s.leverage_max}x")
-                st.caption(f"Régimen: {s.regime} · Condiciones: {', '.join(s.conditions)}")
+                st.caption(
+                    f"Régimen: {s.regime} · "
+                    f"Condiciones: {', '.join(s.conditions)}"
+                )
 
+# ============================================================
+# PIE DE PÁGINA
+# ============================================================
 st.markdown("---")
 st.caption(
     f"Última actualización: {st.session_state.get('last_scan', 'Nunca')} · "
