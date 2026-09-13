@@ -1,9 +1,14 @@
 # main.py
-"""Orquestador principal — ejecuta el pipeline completo + Star Trade Monitor."""
+# ============================================================
+# Orquestador principal — pipeline completo + Star Trade Monitor.
+# v3.2: manejo robusto de errores en régimen y star trades.
+# ============================================================
 import logging
 from typing import List
 
-from config import SYMBOLS, TIMEFRAME_ENTRY, TIMEFRAME_CONFIRM, TIMEFRAME_TREND
+from config import (
+    SYMBOLS, TIMEFRAME_ENTRY, TIMEFRAME_CONFIRM, TIMEFRAME_TREND,
+)
 from data_engine import DataEngine
 from signal_engine import SignalEngine
 from omega_ranker import OmegaRanker, OmegaSignal
@@ -11,12 +16,15 @@ from omega_regime_detector import OmegaRegimeDetector
 from star_trade_predictor import StarTradePredictor
 from report_generator import to_text, star_trade_report
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
 logger = logging.getLogger(__name__)
 
 
 def run_scan(symbols: List[str] = None) -> List[OmegaSignal]:
+    """Ejecuta el pipeline completo de escaneo."""
     symbols = symbols or SYMBOLS
     de = DataEngine()
     se = SignalEngine()
@@ -44,28 +52,35 @@ def run_scan(symbols: List[str] = None) -> List[OmegaSignal]:
 
 
 def run_full_report():
+    """Genera el reporte completo: señales + régimen + star trades."""
     omega_signals = run_scan()
     print(to_text(omega_signals))
 
-    # Régimen
+    # ---- Régimen ----
     detector = OmegaRegimeDetector()
     de = DataEngine()
-    btc = de.fetch_ohlcv('BTC/USDT', '1h', limit=500)
-    if btc is not None:
-        report = detector.generate_regime_report({'1h': btc})
-        print("\n" + "=" * 70)
-        print("  🌊 OMEGA REGIME MONITOR")
-        print("=" * 70)
-        for k, v in report.items():
-            print(f"  {k}: {v}")
-        print()
+    current_regime = 'Chop'
+    try:
+        btc = de.fetch_ohlcv('BTC/USDT', '1h', limit=500)
+        if btc is not None and not btc.empty:
+            report = detector.generate_regime_report({'1h': btc})
+            current_regime = report.get('current_regime', 'Chop')
+            print("\n" + "=" * 70)
+            print("  🌊 OMEGA REGIME MONITOR")
+            print("=" * 70)
+            for k, v in report.items():
+                print(f"  {k}: {v}")
+            print()
+    except Exception as e:
+        logger.error(f"Error en régimen: {e}")
 
-    # Star Trade
-    predictor = StarTradePredictor()
-    pred = predictor.predict(
-        current_regime=report.get('current_regime', 'Chop') if btc is not None else 'Chop',
-    )
-    print(star_trade_report(pred))
+    # ---- Star Trade ----
+    try:
+        predictor = StarTradePredictor()
+        pred = predictor.predict(current_regime=current_regime)
+        print(star_trade_report(pred))
+    except Exception as e:
+        logger.error(f"Error en Star Trade: {e}")
 
 
 if __name__ == '__main__':
