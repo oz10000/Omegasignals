@@ -1,0 +1,22 @@
+{
+  "omega_regime_config": {
+    "version": "1.0.0",
+    "transition_matrix": {
+      "Ω": {"Ω": 0.72, "S": 0.21, "Chop": 0.07},
+      "S": {"Ω": 0.18, "S": 0.54, "Chop": 0.28},
+      "Chop": {"Ω": 0.06, "S": 0.31, "Chop": 0.63}
+    },
+    "monthly_probability": {
+      "1": 0.221, "2": 0.187, "3": 0.153, "4": 0.128,
+      "5": 0.104, "6": 0.082, "7": 0.146, "8": 0.192,
+      "9": 0.284, "10": 0.382, "11": 0.428, "12": 0.354
+    },
+    "best_hours_utc": [2, 3, 4, 13, 14, 15, 16],
+    "worst_hours_utc": [8, 9, 20, 21],
+    "asset_betas": {
+      "BTC/USDT": 0.92, "ETH/USDT": 0.88, "SOL/USDT": 1.15,
+      "BNB/USDT": 0.78, "LINK/USDT": 0.95, "AVAX/USDT": 1.08,
+      "XRP/USDT": 0.72, "ADA/USDT": 0.68, "DOGE/USDT": 1.24
+    }
+  }
+}

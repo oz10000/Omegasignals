@@ -1,0 +1,27 @@
+{
+  "config_optimal": {
+    "version": "3.1.0",
+    "last_updated": "2026-09-13",
+    "star_windows_argentina": [
+      {"label": "🏆 ESTRELLA #1", "start": "23:00", "end": "02:00", "wr": 0.954, "pf": 3.18, "lev": 10},
+      {"label": "🏆 ESTRELLA #2", "start": "11:30", "end": "14:30", "wr": 0.937, "pf": 2.72, "lev": 10},
+      {"label": "🥈 Alta",        "start": "02:00", "end": "03:00", "wr": 0.924, "pf": 2.38, "lev": 7},
+      {"label": "🥉 Media",       "start": "06:00", "end": "07:00", "wr": 0.862, "pf": 1.64, "lev": 3},
+      {"label": "🥉 Media",       "start": "09:00", "end": "10:00", "wr": 0.885, "pf": 1.82, "lev": 3}
+    ],
+    "avoid_windows_argentina": [
+      {"label": "🔴 Baja", "start": "19:00", "end": "21:00"},
+      {"label": "🔴 Baja", "start": "03:00", "end": "06:00"}
+    ],
+    "best_days": {
+      "0_lunes": 1.05, "1_martes": 1.15, "2_miercoles": 1.08,
+      "3_jueves": 1.20, "4_viernes": 1.02, "5_sabado": 0.75, "6_domingo": 0.60
+    },
+    "risk_management": {
+      "max_risk_per_trade": 0.01,
+      "max_concurrent_positions": 3,
+      "max_daily_drawdown": 0.03,
+      "total_leverage_cap": 10
+    }
+  }
+}

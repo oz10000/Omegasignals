@@ -1,0 +1,36 @@
+name: DAPS Ω — Escaneo de Trades Estrella
+
+on:
+  schedule:
+    # Escaneo cada 5 minutos durante ventanas estrella (ARG = UTC-3)
+    # Ventana 1: 23:00-02:00 ARG = 02:00-05:00 UTC
+    # Ventana 2: 11:30-14:30 ARG = 14:30-17:30 UTC
+    - cron: '*/5 2-5,14-17 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run DAPS Scanner
+        run: python main.py
+        env:
+          TZ: America/Argentina/Buenos_Aires
+          ENABLE_LIVE: "False"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: daps-scan-results
+          path: cache/
+          retention-days: 7
