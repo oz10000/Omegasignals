@@ -1,14 +1,14 @@
 # config.py
 # ============================================================
 # D.A.P.S-SIGNALS Ω ENGINE — Configuración central
-# v3.1.0 — Con detector Ω-Regime y predictor Trades Estrella
+# v3.2.0 — Correcciones de red y límites SL/TP
 # ============================================================
 import os
 from datetime import timedelta, timezone
 from typing import Dict, List
 
 PROJECT_NAME = "D.A.P.S-SIGNALS Ω ENGINE"
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 # ------------------------------------------------------------
 # MODO DE OPERACIÓN
@@ -40,10 +40,17 @@ LEVERAGE_CAP = 10
 # ------------------------------------------------------------
 # COSTOS OPERATIVOS
 # ------------------------------------------------------------
-FEE_PER_SIDE = 0.001           # 0.10% por lado (taker Binance)
+FEE_PER_SIDE = 0.001           # 0.10% por lado (taker)
 SLIPPAGE = 0.0005              # 0.05%
 SPREAD = 0.0002                # 0.02%
 COST_TOTAL = FEE_PER_SIDE * 2 + SLIPPAGE + SPREAD
+
+# ------------------------------------------------------------
+# LÍMITES DE SL/TP (evitar valores absurdos)
+# ------------------------------------------------------------
+SL_MIN_PCT = 0.0015            # 0.15% mínimo
+SL_MAX_PCT = 0.0200            # 2.00% máximo
+TP_MIN_PCT = 0.0030            # 0.30% mínimo
 
 # ------------------------------------------------------------
 # DIRECTORIOS
@@ -58,8 +65,13 @@ for d in (CACHE_DIR, DATA_DIR, LOGS_DIR):
 
 # ------------------------------------------------------------
 # EXCHANGES (fallback en cascada)
+# NOTA: Binance y Bybit bloquean IPs de Streamlit Cloud (HTTP 451/403).
+# Se priorizan exchanges que responden correctamente desde cloud.
 # ------------------------------------------------------------
-EXCHANGE_PRIORITY = ['binance', 'okx', 'bybit', 'kraken', 'mexc', 'kucoin']
+EXCHANGE_PRIORITY = ['okx', 'kraken', 'mexc', 'kucoin', 'gateio', 'bitget']
+
+# Exchanges a saltar automáticamente en cloud
+BLOCKED_EXCHANGES = {'binance', 'bybit'}
 
 # ------------------------------------------------------------
 # ACTIVOS VERIFICADOS
@@ -169,3 +181,20 @@ SCORE_TO_WR: Dict[str, Dict] = {
     '50-60':  {'trades': 3968, 'wr': 0.571, 'pf': 1.21, 'dd': -0.098},
     '40-50':  {'trades': 5842, 'wr': 0.498, 'pf': 1.08, 'dd': -0.124},
 }
+
+# ------------------------------------------------------------
+# VENTANAS DE TRADES ESTRELLA (horario Argentina UTC-3)
+# ------------------------------------------------------------
+STAR_WINDOWS = [
+    {'start': (23, 0), 'end': (2, 0), 'quality': 5, 'label': '🏆 ESTRELLA #1', 'wr': 0.954, 'pf': 3.18, 'lev': 10},
+    {'start': (11, 30), 'end': (14, 30), 'quality': 5, 'label': '🏆 ESTRELLA #2', 'wr': 0.937, 'pf': 2.72, 'lev': 10},
+    {'start': (2, 0), 'end': (3, 0), 'quality': 4, 'label': '🥈 Alta', 'wr': 0.924, 'pf': 2.38, 'lev': 7},
+    {'start': (9, 0), 'end': (10, 0), 'quality': 3, 'label': '🥉 Media', 'wr': 0.885, 'pf': 1.82, 'lev': 3},
+    {'start': (6, 0), 'end': (7, 0), 'quality': 3, 'label': '🥉 Media', 'wr': 0.862, 'pf': 1.64, 'lev': 3},
+    {'start': (19, 0), 'end': (21, 0), 'quality': 1, 'label': '🔴 Baja', 'wr': 0.802, 'pf': 1.16, 'lev': 1},
+]
+
+# ------------------------------------------------------------
+# FACTOR POR DÍA DE LA SEMANA (0=lunes, 6=domingo)
+# ------------------------------------------------------------
+BEST_DAYS = {0: 1.05, 1: 1.15, 2: 1.08, 3: 1.20, 4: 1.02, 5: 0.75, 6: 0.60}
