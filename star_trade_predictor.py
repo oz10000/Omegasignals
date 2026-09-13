@@ -1,20 +1,12 @@
 # star_trade_predictor.py
-"""Detector y predictor de Trades Estrella en horario Argentina (UTC-3)."""
-from dataclasses import dataclass, field
-from typing import Dict, List
+# ============================================================
+# Detector y predictor de Trades Estrella (horario Argentina UTC-3).
+# v3.2: usa STAR_WINDOWS y BEST_DAYS desde config.py.
+# ============================================================
+from dataclasses import dataclass
+from typing import List
 from datetime import datetime, timedelta
-from config import TZ_ARGENTINA
-
-STAR_WINDOWS = [
-    {'start': (23, 0), 'end': (2, 0), 'quality': 5, 'label': '🏆 ESTRELLA #1', 'wr': 0.954, 'pf': 3.18, 'lev': 10},
-    {'start': (11, 30), 'end': (14, 30), 'quality': 5, 'label': '🏆 ESTRELLA #2', 'wr': 0.937, 'pf': 2.72, 'lev': 10},
-    {'start': (2, 0), 'end': (3, 0), 'quality': 4, 'label': '🥈 Alta', 'wr': 0.924, 'pf': 2.38, 'lev': 7},
-    {'start': (9, 0), 'end': (10, 0), 'quality': 3, 'label': '🥉 Media', 'wr': 0.885, 'pf': 1.82, 'lev': 3},
-    {'start': (6, 0), 'end': (7, 0), 'quality': 3, 'label': '🥉 Media', 'wr': 0.862, 'pf': 1.64, 'lev': 3},
-    {'start': (19, 0), 'end': (21, 0), 'quality': 1, 'label': '🔴 Baja', 'wr': 0.802, 'pf': 1.16, 'lev': 1},
-]
-
-BEST_DAYS = {0: 1.05, 1: 1.15, 2: 1.08, 3: 1.20, 4: 1.02, 5: 0.75, 6: 0.60}
+from config import TZ_ARGENTINA, STAR_WINDOWS, BEST_DAYS
 
 
 @dataclass
@@ -65,6 +57,7 @@ class StarTradePredictor:
         now = self._now_ar()
         today_trades = today_trades or []
 
+        # ¿Estamos en una ventana activa?
         current_label = '⏸️ Fuera de ventana'
         current_quality = 0
         for w in self.windows:
@@ -73,23 +66,33 @@ class StarTradePredictor:
                 current_quality = w['quality']
                 break
 
+        # Próxima ventana de calidad ≥ 4
         future_windows = []
         for w in self.windows:
             if w['quality'] >= 4:
                 mins = self._minutes_until(now, w['start'])
                 future_windows.append((mins, w))
         future_windows.sort(key=lambda x: x[0])
-        next_mins, next_w = future_windows[0] if future_windows else (9999, self.windows[0])
+        next_mins, next_w = (
+            future_windows[0] if future_windows else (9999, self.windows[0])
+        )
 
+        # Confianza ajustada
         day_factor = self.best_days.get(now.weekday(), 1.0)
-        regime_factor = {'Ω': 1.20, 'S': 1.05, 'Chop': 0.70}.get(current_regime, 0.80)
+        regime_factor = {'Ω': 1.20, 'S': 1.05, 'Chop': 0.70}.get(
+            current_regime, 0.80
+        )
         confidence = min(next_w['wr'] * day_factor * regime_factor, 0.98)
 
+        # Activos probables
         assets = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
         if next_w['quality'] >= 5:
             assets.append('BNB/USDT')
 
-        day_names = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        day_names = [
+            'Lunes', 'Martes', 'Miércoles', 'Jueves',
+            'Viernes', 'Sábado', 'Domingo',
+        ]
 
         return StarTradePrediction(
             is_in_window=current_quality >= 4,
